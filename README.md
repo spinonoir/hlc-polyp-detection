@@ -51,7 +51,7 @@ data/
 + use the `FasterRCNN_evaluation.ipynb` notebook to run through the test data and calculate various metrics
 + STILL UPDATING README, but the notebook is well documented
 
-## Date Utils 
+## Data Utils 
 - contains some scripts for processing PASCAL_VOC xml labels into CSV files.
 
 ## Scratch 
