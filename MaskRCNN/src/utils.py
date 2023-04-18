@@ -63,15 +63,18 @@ def get_transform(train=True):
         label_fields=['labels'])
     
     if train:
-        return A.Compose([
-            # TODO: Add more transformations and see what works best.
-            A.Flip(0.5),
-            A.RandomRotate90(0.5),
-            A.MotionBlur(p=0.5),
-            A.MedianBlur(blur_limit=3, p=0.1),
-            A.Blur(blur_limit=3, p=0.1),
-            ToTensorV2(p=1.0),
-        ], bbox_params=bbox_p)
+        return A.Compose(
+                [
+                    # TODO: Add more transformations and see what works best.
+                    A.Flip(0.5),
+                    A.RandomRotate90(0.5),
+                    A.MotionBlur(p=0.5),
+                    A.MedianBlur(blur_limit=3, p=0.1),
+                    A.Blur(blur_limit=3, p=0.1),
+                    ToTensorV2(p=1.0),
+                ], 
+                bbox_params=bbox_p,
+            )
 
     else: 
         return A.Compose([

@@ -33,32 +33,35 @@ class MaskedPolypDataset(Dataset):
 
         mask_img = io.imread(mask_path)
         mask_img = resize(mask_img, (self.height, self.width))
-        # print(f'{mask_img.shape=} {mask_img.dtype=} {mask_img.max()=} {mask_img.min()=}')
-
-        # mask = clamp_mask_colors(mask_img)
-        # print(f'{mask.shape} {mask.dtype} {mask.max()} {mask.min()}')
-        mask = torch.as_tensor(mask_img, dtype=torch.uint8)
-
-        bbox = get_mask_coordinates(mask)
-        bbox = torch.as_tensor(bbox, dtype=torch.float32)
+        mask_img[mask_img < 1.] = 0.
+        mask = mask_img.astype(np.uint8)
+        
+        
+        # Get the boumding box coordinates for each mask
+        num_objs = len(np.unique(mask))
+        boxes = []
+        for i in range(1, num_objs):
+            pos = np.where(mask == i)
+            xmin = np.min(pos[1])
+            xmax = np.max(pos[1])
+            ymin = np.min(pos[0])
+            ymax = np.max(pos[0])
+            box = (xmin, ymin, xmax, ymax)
+            boxes.append(box)
+        boxes = np.asarray(boxes, dtype=np.float32)
+        # print(f'boxes shape: {boxes.shape}')
+        # print(f'boxes shape: {boxes.shape}')
 
         labels = torch.ones((1,), dtype=torch.int64)
-
-        boxes = torch.as_tensor(bbox, dtype=torch.float32)
-        boxes.unsqueeze_(0)
-        # print(f'{boxes.shape=}')
-        masks = torch.as_tensor(mask, dtype=torch.uint8)
-        masks.unsqueeze_(0)
         image_id = torch.tensor([index])
-        # area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
         iscrowd = torch.zeros((1,), dtype=torch.int64)
         
         if self.transforms is not None:
             transformed = self.transforms(
                 image=img, 
                 bboxes=boxes,
-                masks=masks,
-                labels=labels
+                masks=[mask],
+                labels=[labels]
             )
 
         target = {}
