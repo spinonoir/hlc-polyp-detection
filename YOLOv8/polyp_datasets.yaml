@@ -1,0 +1,11 @@
+# https://docs.ultralytics.com/yolov5/train_custom_data/#12-create-labels
+# path: ../drive/MyDrive/Senior Year 22-23/Spring 2023/CSCI 566/566 project/YOLOv8/datasets/CVC_ClinicDB # dataset root dir
+path: CVC_ClinicDB/
+train: images/train2019/ # train images relative to 'path'
+val: images/val2019/ # val images relative to 'path'
+test: images/test2019/ # test images relative to 'path
+
+# Classes
+names:
+  0: polyp
+
