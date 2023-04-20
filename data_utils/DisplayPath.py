@@ -85,13 +85,13 @@ def is_not_hidden(path):
 
 def main():
     paths = DisplayablePath.make_tree(
-        Path('PolypsSet'),
+        Path('data'),
         criteria=is_not_hidden
     )
     # for path in paths:
     #     print(path.displayable())
 
-    paths = DisplayablePath.make_tree(Path('PolypsSet'), criteria=is_not_hidden)
+    paths = DisplayablePath.make_tree(Path('data'), criteria=is_not_hidden)
     for path in paths:
         print(path.displayable())    
 

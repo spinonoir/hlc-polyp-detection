@@ -6,6 +6,9 @@ import os
 import glob as glob
 import skimage.io as io
 from  skimage.transform import resize
+# import albumentations as A
+# from albumentations.pytorch import ToTensorV2
+
 
 from src.config import CLASSES, RESIZE_TO, TRAIN_DIR, VALID_DIR, TEST_DIR, BATCH_SIZE
 from src.utils import collate_fn, get_transform
@@ -82,20 +85,28 @@ class MaskedPolypDataset(Dataset):
         return len(self.all_images)
 
 
-def get_mask_coordinates(mask):
-    # get all object masks
-    # print(f'mask shape: {mask.shape}')
-    pos = torch.where(mask)
-    # print(f'pos  {pos}')
-    xmin = int(torch.min(pos[1]))
-    xmax = int(torch.max(pos[1]))
-    ymin = int(torch.min(pos[0]))
-    ymax = int(torch.max(pos[0]))
+    # def get_transform(self, train=True):
+    #     bbox_p = A.BboxParams(
+    #     format='pascal_voc',
+    #     min_visibility=0.1,
+    #     min_area=128, 
+    #     label_fields=['labels'])
+    
+    #     if train:
+    #         return A.Compose(
+    #                 [
+    #                     # TODO: Add more transformations and see what works best.
+    #                     A.Flip(0.5),
+    #                     A.RandomRotate90(0.5),
+    #                     A.MotionBlur(p=0.5),
+    #                     A.MedianBlur(blur_limit=3, p=0.1),
+    #                     A.Blur(blur_limit=3, p=0.1),
+    #                     ToTensorV2(p=1.0),
+    #                 ], 
+    #                 bbox_params=bbox_p,
+    #             )
 
-    box = torch.tensor([xmin, ymin, xmax, ymax])
-    return box
-
-def clamp_mask_colors(mask):
-    mask[mask < 255] = 0
-    mask[mask == 255] = 1
-    return mask
+    #     else: 
+    #         return A.Compose([
+    #             ToTensorV2(p=1.0),
+    #         ], bbox_params=bbox_p)

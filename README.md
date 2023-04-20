@@ -56,3 +56,8 @@ data/
 
 ## Scratch 
 - scraps [jarret] didn't want to delete yet. 
+
+# TODO
+- Ditch MaskRCNN and stick to FasterRCNN --> We don't gain much from masking
+- Datasets:
+  - 
