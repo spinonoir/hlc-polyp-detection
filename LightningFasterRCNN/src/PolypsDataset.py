@@ -23,7 +23,7 @@ from src.config import CLASSES, RESIZE_TO
 
 
 class PolypsDataset(Dataset):
-    def __init__(self, root_dir, stage='train', resize_to=RESIZE_TO, transforms=None):
+    def __init__(self, root_dir, stage='train', resize_to=800, transforms=None):
         # make sure state is valid
         assert stage in ['train', 'validation', 'test'], f'Stage {stage} not recognized'
 
@@ -52,6 +52,9 @@ class PolypsDataset(Dataset):
     def __getitem__(self, idx):
         image_path = self.stage_images[idx]
 
+        # assert image_path exists
+        assert os.path.exists(image_path), f'Image path {image_path} does not exist'        
+
         # resize image using torchvision
         # image = io.read_image(image_path)
         # image = F.resize(image, [self.resize_to['height'], self.resize_to['width']])
@@ -62,7 +65,7 @@ class PolypsDataset(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         img_height = image.shape[0]
         img_width = image.shape[1]
-        image = cv2.resize(image, (self.resize_to['width'], self.resize_to['height']))
+        image = cv2.resize(image, (self.resize_to, self.resize_to))
         image = np.asarray(image, dtype=np.float32) / 255.0
 
         # get annotations for this image
@@ -88,7 +91,6 @@ class PolypsDataset(Dataset):
             ]
             if box[0] >= box[2] or box[1] >= box[3]:
                 box = [2, 2, 7, 7]
-                labels[i] = 0
             boxes.append(box)
         boxes = torch.as_tensor(boxes, dtype=torch.float32)
 
@@ -107,14 +109,15 @@ class PolypsDataset(Dataset):
 
         # Make sure a box exists
         if len(sample['bboxes']) == 0:
-            boxes = torch.zeros((1, 4), dtype=torch.float32)
+            box = [2, 2, 7, 7]
+            boxes = torch.as_tensor(box, dtype=torch.float32)
         else:
             boxes = torch.as_tensor(sample['bboxes'], dtype=torch.float32)
         
         image = torch.as_tensor(sample['image'], dtype=torch.float32)
 
         target = {}
-        target['boxes'] = boxes
+        target['boxes'] = boxes.unsqueeze(0)
         target['labels'] = labels
 
         return image, target

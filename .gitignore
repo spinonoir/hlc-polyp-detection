@@ -3,6 +3,7 @@ data/
 better_data/
 PolypsSet/
 data.zip
+wandb/
 
 
 # Byte-compiled / optimized / DLL files

@@ -1,35 +1,28 @@
 from pyparsing import Optional
 import pytorch_lightning as pl
 import src.PolypsDataset as polyps_data
+# import DataLoader from PyTorch
+from torch.utils.data import DataLoader
 from torchvision import transforms
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+from src.config import DEVICE, BATCH_SIZE, NUM_WORKERS
 
+
+
+def collate_fn(batch):
+    return tuple(zip(*batch))
 
 class PolypsPLDataModule(pl.LightningDataModule):
-    def __init__(self, batch_size, data_dir: str = './data', num_classes: int = 2, num_workers: int = 4, pin_memory: bool = False):
+    def __init__(self, data_dir='./data', batch_size=BATCH_SIZE, num_classes=2, num_workers=NUM_WORKERS, pin_memory=True):
         super().__init__()
         self.batch_size = batch_size
         self.data_dir = data_dir
         self.num_workers = num_workers
         self.pin_memory = pin_memory
         self.train_dataset = None
-        self.val_dataset = None
-        self.test_dataset = None
-        self.num_classes = num_classes
+        
 
-        self.augmentation = transforms.Compose([
-            # transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomRotation(degrees=15),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])
-
-        self.transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])
 
         self.bbox_params = A.BboxParams(
             format='pascal_voc', 
@@ -55,4 +48,40 @@ class PolypsPLDataModule(pl.LightningDataModule):
         pass
 
     def setup(self, stage = None):
-        pass
+        if stage == 'fit' or stage is None:
+            self.train_dataset = polyps_data.PolypsDataset(self.data_dir, stage='train', transforms=self.train_transform)
+            self.val_dataset = polyps_data.PolypsDataset(self.data_dir, stage='validation', transforms=self.test_transform)
+        if stage == 'test' or stage is None:
+            self.test_dataset = polyps_data.PolypsDataset(self.data_dir, stage='test', transforms=self.test_transform)
+    
+    def train_dataloader(self):
+        return DataLoader(
+            self.train_dataset, 
+            batch_size=self.batch_size, 
+            shuffle=True, 
+            num_workers=self.num_workers, 
+            pin_memory=self.pin_memory,
+            collate_fn=collate_fn
+        )
+
+    def val_dataloader(self):
+        return DataLoader(
+            self.val_dataset, 
+            batch_size=self.batch_size, 
+            shuffle=False, 
+            num_workers=self.num_workers, 
+            pin_memory=self.pin_memory,
+            collate_fn=collate_fn
+        )
+
+    def test_dataloader(self):
+        return DataLoader(
+            self.test_dataset, 
+            batch_size=self.batch_size, 
+            shuffle=False, 
+            num_workers=self.num_workers, 
+            pin_memory=self.pin_memory,
+            collate_fn=collate_fn
+        )
+
+   

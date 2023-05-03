@@ -9,11 +9,13 @@ import os
 This file contains all of the configurations for the model.
 """
 
-BATCH_SIZE = 32                                 # Number of images in each batch
-RESIZE_TO = {'width': 800, 'height': 548}       # Resize images to this size
+BATCH_SIZE = 8                                  # Number of images in each batch
+RESIZE_TO = {'width': 800, 'height': 800}       # Resize images to this size
+INPUT_SIZE = 800                                # Size of images when inputted to model
 NUM_EPOCHS = 15                                 # Number of epochs to train for
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+NUM_WORKERS = 8 if torch.cuda.is_available() else 1
 
 # # Paths to training and validation data (jpf and xml files)
 # TRAIN_DIR = os.path.join("data", "train")
@@ -25,6 +27,8 @@ CLASSES = [
     "polyp",
 ]
 NUM_CLASSES = len(CLASSES)
+
+LEARNING_RATE = 0.0001
 
 # Do we output samples after transforming the images?
 VISUALIZE_AFTER_TRANSFORM = False
