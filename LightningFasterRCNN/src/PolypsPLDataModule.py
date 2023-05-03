@@ -14,14 +14,14 @@ def collate_fn(batch):
     return tuple(zip(*batch))
 
 class PolypsPLDataModule(pl.LightningDataModule):
-    def __init__(self, data_dir='./data', batch_size=BATCH_SIZE, num_classes=2, num_workers=NUM_WORKERS, pin_memory=True):
+    def __init__(self, data_dir='./data', batch_size=BATCH_SIZE, num_classes=2, num_workers=NUM_WORKERS, pin_memory=True, resize_to=800):
         super().__init__()
         self.batch_size = batch_size
         self.data_dir = data_dir
         self.num_workers = num_workers
         self.pin_memory = pin_memory
         self.train_dataset = None
-        
+        self.resize_to = resize_to
 
 
         self.bbox_params = A.BboxParams(
@@ -49,10 +49,10 @@ class PolypsPLDataModule(pl.LightningDataModule):
 
     def setup(self, stage = None):
         if stage == 'fit' or stage is None:
-            self.train_dataset = polyps_data.PolypsDataset(self.data_dir, stage='train', transforms=self.train_transform)
-            self.val_dataset = polyps_data.PolypsDataset(self.data_dir, stage='validation', transforms=self.test_transform)
+            self.train_dataset = polyps_data.PolypsDataset(self.data_dir, stage='train', transforms=self.train_transform, resize_to=self.resize_to)
+            self.val_dataset = polyps_data.PolypsDataset(self.data_dir, stage='validation', transforms=self.test_transform, resize_to=self.resize_to)
         if stage == 'test' or stage is None:
-            self.test_dataset = polyps_data.PolypsDataset(self.data_dir, stage='test', transforms=self.test_transform)
+            self.test_dataset = polyps_data.PolypsDataset(self.data_dir, stage='test', transforms=self.test_transform, resize_to=self.resize_to)
     
     def train_dataloader(self):
         return DataLoader(

@@ -7,6 +7,7 @@ from torchvision.ops.boxes import box_iou
 from torchvision.models.detection._utils import Matcher
 from torchvision.ops import nms, box_convert
 
+
 from functools import wraps
 import gc
 
@@ -28,29 +29,13 @@ class LightningFasterModule(pl.LightningModule):
         super().__init__()
         assert config is not None, "Config is required"
         self.config = config
-        self.detector = torchvision.models.detection.fasterrcnn_resnet50_fpn_v2(weights="DEFAULT")
+        self.detector = torchvision.models.detection.fasterrcnn_resnet50_fpn_v2(weights="DEFAULT", trainable_backbone_layers=5)
 
         in_features = self.detector.roi_heads.box_predictor.cls_score.in_features 
         self.detector.roi_heads.box_predictor = FastRCNNPredictor(in_features, config['num_classes'])
+        
+        self.save_hyperparameters(config)
 
-
-    # def validation_step(self, batch, batch_idx):
-    #     images, targets = batch
-    #     # fasterrcnn takes only images for eval() mode
-    #     outs = self.model(images)
-    #     ious = torch.stack([_evaluate_iou(t, o) for t, o in zip(targets, outs)])
-    #     iou = ious.mean()
-    #     metrics = _evaluate_metrics(iou, self.thresholds)
-    #     self.log("val_iou", iou, prog_bar=True)
-    #     return {"val_iou": iou, **metrics}
-    
-    # def validation_epoch_end(self, outputs):
-    #     val_iou = torch.stack([x["val_iou"] for x in outputs]).mean()
-    #     val_metrics = {k: torch.stack([x[k] for x in outputs]).mean() for k in outputs[0].keys() if k != "val_iou"}
-    #     report_thresh = self.thresholds[-1]
-    #     prec, rec, f1 = val_metrics[f"precision_{report_thresh}"], val_metrics[f"recall_{report_thresh}"], val_metrics[f"f1_{report_thresh}"]
-    #     self.log("val_iou", val_iou, f'recall_{report_thresh}', rec, f'prec_{report_thresh}', prec, f'f1_{report_thresh}', f1 , prog_bar=True)
-    #     return {"val_iou": val_iou, **val_metrics}
 
     def full_train(self):
         self.detector.requires_grad = True
@@ -84,58 +69,80 @@ class LightningFasterModule(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         images, targets = batch
         targets = [{k: v for k, v in t.items()} for t in targets]
-        # print(f"{type(targets)=} {type(targets[0])=} {type(targets[0]['labels'])=}")
+
         # fasterrcnn takes both images and targets for training, returns
         loss_dict = self.detector(images, targets)
+        losses = sum(loss for loss in loss_dict.values())
 
-        pred_boxes = self.forward(images)
-        self.detector.train()
-        # print(f"{type(targets)=} {len(pred_boxes)=}")
-        # print(f"{targets=}")
-        # print(f"{pred_boxes=}")
-        # for i in range(len(pred_boxes)):
-        #     print(f"{type(pred_boxes[i])=}")
+        # Inferece
+        # pred_boxes = self.forward(images)
+        # stacked_metrics = torch.stack([self.evaluate_metrics(t["boxes"], o["boxes"]) for t, o in zip(targets, pred_boxes)])
+        # stacked_metrics = stacked_metrics.mean(dim=0)
+        # acc, prec, rec, f1 = stacked_metrics
+
+        # log_dict = {"train_acc": acc, "train_precision": prec, "train_recall": rec, "train_f1": f1}
+        # self.log_dict(log_dict, batch_size=self.config['batch_size'])
+
+
+        # self.log("train_acc", acc, batch_size=self.config['batch_size'])
+        # self.log("train_precision", prec, batch_size=self.config['batch_size'])
+        # self.log("train_recall", rec, batch_size=self.config['batch_size'])
+        # self.log("train_f1", f1, batch_size=self.config['batch_size'])
+
         
 
-        loss_dict['loss_recall'] = 1 - torch.mean(torch.stack([self.recall(b["boxes"], pb["boxes"], iou_threshold=0.5) for b, pb in zip(targets, pred_boxes)]))
-        loss = sum(loss_dict.values())
+        self.log("train_loss", losses, batch_size=self.config['batch_size'])
+        self.log_dict(loss_dict, batch_size=self.config['batch_size'])
 
-        loss_dict = {k:(v.detach() if hasattr(v, 'detach') else v) for k, v in loss_dict.items()}
-        self.log("loss", loss, batch_size=self.config['batch_size'])
-        self.log_dict(loss_dict)
-        return {"loss": loss, "log": loss_dict}
+        return {"loss": losses, "log": loss_dict}
 
     # @flush_and_gc
     def validation_step(self, batch, batch_idx):
+
         images, targets = batch
         targets = [{k: v for k, v in t.items()} for t in targets]
-        pred_boxes = self.forward(images)
 
-        # print("IN VALIDATION STEP")
-        # print(f"{type(targets)=} {type(pred_boxes)=}")
-        # print(f"{pred_boxes=}")
-        # print(f"{pred_boxes=}")
-        # for i in range(len(pred_boxes)):
-        #     print(f"{type(pred_boxes[i])=}")
+        # Inferece
+        pred_boxes = self.detector(images)
+        stacked_metrics = torch.stack([self.evaluate_metrics(t["boxes"], o["boxes"]) for t, o in zip(targets, pred_boxes)])
+        stacked_metrics = stacked_metrics.mean(dim=0)
+        acc, prec, rec, f1 = stacked_metrics
 
-        recall_list = [self.recall(b["boxes"], pb["boxes"], iou_threshold=0.5) for b, pb in zip(targets, pred_boxes)]
-        self.val_recall = torch.mean(torch.stack(recall_list))
-        # self.val_recall = torch.mean(torch.stack([self.recall(b["boxes"], pb["boxes"], iou_threshold=0.5) for b, pb in zip(targets, pred_boxes[0])]))
-        self.log("val_recall", self.val_recall, batch_size=self.config['batch_size'])
+        log_dict = {"val_acc": acc, "val_precision": prec, "val_recall": rec, "val_f1": f1}
+        self.log_dict(log_dict, batch_size=self.config['batch_size'])
+
+
+        self.log("val_acc", acc, batch_size=self.config['batch_size'])
+        self.log("val_precision", prec, batch_size=self.config['batch_size'])
+        self.log("val_recall", rec, batch_size=self.config['batch_size'])
+        self.log("val_f1", f1, batch_size=self.config['batch_size'])
+
     
-        return self.val_recall
+        return log_dict
+    
 
     # @flush_and_gc
     def test_step(self, batch, batch_idx):
         images, targets = batch
         targets = [{k: v for k, v in t.items()} for t in targets]
-        pred_boxes = self.forward(images)
+        
+        # Inferece
+        pred_boxes = self.detector(images)
+        stacked_metrics = torch.stack([self.evaluate_metrics(t["boxes"], o["boxes"]) for t, o in zip(targets, pred_boxes)])
+        stacked_metrics = stacked_metrics.mean(dim=0)
+        acc, prec, rec, f1 = stacked_metrics
 
-        self.test_recall = torch.mean(torch.stack([self.recall(b["boxes"], pb["boxes"], iou_threshold=0.5) for b, pb in zip(targets, pred_boxes)]))
-        self.log("test_recall", self.test_recall, batch_size=self.config['batch_size'])
+        log_dict = {"test_acc": acc, "test_precision": prec, "test_recall": rec, "test_f1": f1}
+        self.log_dict(log_dict, batch_size=self.config['batch_size'])
 
-        return self.test_recall
 
+        self.log("test_acc", acc, batch_size=self.config['batch_size'])
+        self.log("test_precision", prec, batch_size=self.config['batch_size'])
+        self.log("test_recall", rec, batch_size=self.config['batch_size'])
+        self.log("test_f1", f1, batch_size=self.config['batch_size'])
+
+        return log_dict
+    
 
     def recall(self, target_boxes, pred_boxes, iou_threshold=1.0):
         """
@@ -176,9 +183,12 @@ class LightningFasterModule(pl.LightningModule):
 
 
         return recall
-        
 
-    def evaluate_metrics(self, target_boxes, pred_boxes, iou_threshold=1.0):
+
+
+
+
+    def evaluate_metrics(self, target_boxes, pred_boxes, iou_threshold=0.5):
         """
         Calculate precision, accuracy, f1 and recall for a given target and prediction boxes
         Store in self.metric_dict
@@ -186,6 +196,7 @@ class LightningFasterModule(pl.LightningModule):
         """
         total_gt = len(target_boxes)
         total_pred = len(pred_boxes)
+        
 
         # if there are boxes in both target and pred, calculate the scores
         if total_gt > 0 and total_pred > 0:
@@ -206,7 +217,7 @@ class LightningFasterModule(pl.LightningModule):
             precision = true_positive / (true_positive + false_positive) if true_positive + false_positive > 0 else 0
             recall = true_positive / (true_positive + false_negative) if true_positive + false_negative > 0 else 0
             f1 = 2 * (precision * recall) / (precision + recall) if precision + recall > 0 else 0
-            # self.metric_dict = {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1}
+
 
         
         elif total_gt == 0:
@@ -215,14 +226,14 @@ class LightningFasterModule(pl.LightningModule):
                 precision = torch.tensor(0.0, device=pred_boxes.device)
                 recall = torch.tensor(0.0, device=pred_boxes.device)
                 f1 = torch.tensor(0.0, device=pred_boxes.device)
-                # self.metric_dict = {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1}
+
 
             else:
                 accuracy = torch.tensor(1.0, device=pred_boxes.device)
                 precision = torch.tensor(1.0, device=pred_boxes.device)
                 recall = torch.tensor(1.0, device=pred_boxes.device)
                 f1 = torch.tensor(1.0, device=pred_boxes.device)
-                # self.metric_dict = {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1}
+
 
             
         elif total_gt > 0 and total_pred == 0:
@@ -230,21 +241,6 @@ class LightningFasterModule(pl.LightningModule):
             precision = torch.tensor(0.0, device=pred_boxes.device)
             recall = torch.tensor(0.0, device=pred_boxes.device)
             f1 = torch.tensor(0.0, device=pred_boxes.device)
-            # self.metric_dict = {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1}
-
-        return {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1}
 
 
-    # def validation_epoch_end(self, outs):
-    #     avg_iou = torch.stack([o["val_iou"] for o in outs]).mean()
-    #     logs = {"val_iou": avg_iou}
-    #     return {"avg_val_iou": avg_iou, "log": logs}
-
-    # def configure_optimizers(self):
-    #     return torch.optim.SGD(
-    #         self.model.parameters(),
-    #         lr=self.learning_rate,
-    #         momentum=0.9,
-    #         weight_decay=0.005,
-    #     )
-    
+        return torch.as_tensor([accuracy, precision, recall, f1], device=pred_boxes.device)

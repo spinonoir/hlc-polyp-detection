@@ -76,23 +76,35 @@ class PolypsDataset(Dataset):
 
         labels = torch.as_tensor(labels, dtype=torch.int64)
         
+        # track the number of label flips for debugging purposes
+        first_label_tracker = 0
+
         # get bounding boxes, and resize them
         xmin = annotation['xmin'].values.tolist()
         ymin = annotation['ymin'].values.tolist()
         xmax = annotation['xmax'].values.tolist()
         ymax = annotation['ymax'].values.tolist()
         boxes = []
+        assert len(xmin) != 0 and len(ymin)!= 0 and len(xmax)!= 0 and len(ymax)!= 0,\
+        f'No bounding boxes found for image {image_path}\nxmin = {xmin}\nymin = {ymin}\nxmax = {xmax}\nymax = {ymax}\n{annotation=}'
         for i in range(len(xmin)):
             box = [
-                (xmin[i] / img_width) * self.resize_to['width'],
-                (ymin[i] / img_height) * self.resize_to['height'],
-                (xmax[i] / img_width) * self.resize_to['width'],
-                (ymax[i] / img_height) * self.resize_to['height']
+                (xmin[i] / img_width) * self.resize_to,
+                (ymin[i] / img_height) * self.resize_to,
+                (xmax[i] / img_width) * self.resize_to,
+                (ymax[i] / img_height) * self.resize_to
             ]
+            box = torch.as_tensor(box, dtype=torch.float32)
             if box[0] >= box[2] or box[1] >= box[3]:
                 box = [2, 2, 7, 7]
+                box = torch.as_tensor(box, dtype=torch.float32)
+                if labels[i] == 1:
+                    labels[i] =  torch.as_tensor([0], dtype=torch.float32)
+                    first_label_tracker += 1
             boxes.append(box)
-        boxes = torch.as_tensor(boxes, dtype=torch.float32)
+        boxes = torch.stack(boxes)
+
+        # assert image_path.strip(self.root_dir+'/') != "CVC-ClinicDB/validation/images/100.png", f'boxes: {boxes}, labels: {labels}, first_label_tracker: {first_label_tracker}'
 
         # make sure the box dimensions are correct
     
@@ -105,20 +117,33 @@ class PolypsDataset(Dataset):
                 labels=labels
             )
         
-
+        # track the number of label flips for debugging purposes
+        second_label_tracker = 0
 
         # Make sure a box exists
-        if len(sample['bboxes']) == 0:
-            box = [2, 2, 7, 7]
-            boxes = torch.as_tensor(box, dtype=torch.float32)
-            labels = torch.as_tensor([0], dtype=torch.int64)
-        else:
-            boxes = torch.as_tensor(sample['bboxes'], dtype=torch.float32)
+        # if len(sample['bboxes']) == 0:
+        #     if labels[0] == 1:
+        #         second_label_tracker += 1
+        #     box = [2, 2, 7, 7]
+        #     boxes = torch.as_tensor(box, dtype=torch.float32)
+        #     labels = torch.as_tensor([0], dtype=torch.int64)
+        # else:
+        boxes = torch.as_tensor(sample['bboxes'], dtype=torch.float32)
         
         image = torch.as_tensor(sample['image'], dtype=torch.float32)
 
+        if len(boxes.shape) == 1:
+            box = [2, 2, 7, 7]
+            box = torch.as_tensor(box, dtype=torch.float32)
+            boxes = box.unsqueeze(0)
+            
+            # labels = labels.unsqueeze(0)
+
         target = {}
-        target['boxes'] = boxes.unsqueeze(0)
+        target['boxes'] = boxes
         target['labels'] = labels
+        target['first_label_tracker'] = first_label_tracker
+        target['second_label_tracker'] = second_label_tracker
+        target['path'] = image_path
 
         return image, target

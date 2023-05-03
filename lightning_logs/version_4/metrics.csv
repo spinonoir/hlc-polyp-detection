@@ -1,0 +1,2 @@
+lr-SGD,lr-SGD-momentum,step
+0.01,0.9,0
