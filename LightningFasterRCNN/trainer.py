@@ -60,7 +60,7 @@ def train_model(model, run_name, dm=None, run=None):
         wandb_logger = WandbLogger()
     
     chkpt = ModelCheckpoint(
-        dirpath=os.path.join(MODEL_DIR, "checkpoints"),
+        dirpath=os.path.join(MODEL_DIR, "chkpts"),
         filename=f"chkpt-{run_name}",
         monitor="val_recall",
         mode="max")

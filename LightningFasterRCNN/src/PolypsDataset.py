@@ -111,6 +111,7 @@ class PolypsDataset(Dataset):
         if len(sample['bboxes']) == 0:
             box = [2, 2, 7, 7]
             boxes = torch.as_tensor(box, dtype=torch.float32)
+            labels = torch.as_tensor([0], dtype=torch.int64)
         else:
             boxes = torch.as_tensor(sample['bboxes'], dtype=torch.float32)
         

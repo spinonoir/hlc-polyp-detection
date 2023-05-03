@@ -78,12 +78,13 @@ class LightningFasterModule(pl.LightningModule):
                 "lr_scheduler": {
                     "scheduler": scheduler, 
                     "monitor": "val_loss" }}
+    
 
     # @flush_and_gc
     def training_step(self, batch, batch_idx):
         images, targets = batch
         targets = [{k: v for k, v in t.items()} for t in targets]
-        print(f"{type(targets)=} {type(targets[0])=} {type(targets[0]['labels'])=}")
+        # print(f"{type(targets)=} {type(targets[0])=} {type(targets[0]['labels'])=}")
         # fasterrcnn takes both images and targets for training, returns
         loss_dict = self.detector(images, targets)
 
@@ -100,7 +101,7 @@ class LightningFasterModule(pl.LightningModule):
         loss = sum(loss_dict.values())
 
         loss_dict = {k:(v.detach() if hasattr(v, 'detach') else v) for k, v in loss_dict.items()}
-        self.log("loss", loss)
+        self.log("loss", loss, batch_size=self.config['batch_size'])
         self.log_dict(loss_dict)
         return {"loss": loss, "log": loss_dict}
 
@@ -120,7 +121,7 @@ class LightningFasterModule(pl.LightningModule):
         recall_list = [self.recall(b["boxes"], pb["boxes"], iou_threshold=0.5) for b, pb in zip(targets, pred_boxes)]
         self.val_recall = torch.mean(torch.stack(recall_list))
         # self.val_recall = torch.mean(torch.stack([self.recall(b["boxes"], pb["boxes"], iou_threshold=0.5) for b, pb in zip(targets, pred_boxes[0])]))
-        self.log("val_recall", self.val_recall)
+        self.log("val_recall", self.val_recall, batch_size=self.config['batch_size'])
     
         return self.val_recall
 
@@ -131,7 +132,7 @@ class LightningFasterModule(pl.LightningModule):
         pred_boxes = self.forward(images)
 
         self.test_recall = torch.mean(torch.stack([self.recall(b["boxes"], pb["boxes"], iou_threshold=0.5) for b, pb in zip(targets, pred_boxes)]))
-        self.log("test_recall", self.test_recall)
+        self.log("test_recall", self.test_recall, batch_size=self.config['batch_size'])
 
         return self.test_recall
 
