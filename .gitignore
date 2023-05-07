@@ -4,7 +4,7 @@ better_data/
 PolypsSet/
 data.zip
 wandb/
-
+*.ckpt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
