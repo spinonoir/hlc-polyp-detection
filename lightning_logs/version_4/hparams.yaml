@@ -1,0 +1,16 @@
+architecture: fasterrcnn_resnext50_32x4d
+batch_size: 4
+clip_limit: 0.25
+dataset_id: hlc-custom-polyp-detection
+difference: false
+epochs: 15
+infra: osx
+lr: 0.01
+max_epochs: 100
+min_lr: 1.0e-07
+momentum: 0.9
+name: fancy_walrus
+nesterov: true
+num_classes: 2
+project: hlc-polyp-detection
+weight_decay: 0.0005

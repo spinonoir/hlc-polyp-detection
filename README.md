@@ -1,6 +1,58 @@
 # hlc-polyp-detection
 Hidden Layer Cake - Computer Vision for Colonoscopy Polyp Detection 
 
+## Lightning Faster RCNN Polyp Detection Module
+- [x] Includes significantly more data, neatly orgainized:
+  <details>
+  <summary> New data directory structure diagram </summary>
+```
+data/
+├── all_labels.csv
+├── CVC-ClinicDB/
+│   ├── test/
+│   │   └── img_CVC-ClinicDB_test.png
+│   ├── train/
+│   │   └── img_CVC-ClinicDB_train.png
+│   └── validation/
+│       └── img_CVC-ClinicDB_validation.png
+├── ETIS-LaribPolypDB/
+│   └── test/
+│       └── img_ETIS-LaribPolypDB_test.png
+├── Kaidong/
+│   ├── test/
+│   │   └── img_Kaidong_test.png
+│   ├── train/
+│   │   └── img_Kaidong_train.png
+│   └── validation/
+│       └── img_Kaidong_validation.png
+├── Kvasir/
+│   ├── test/
+│   │   └── img_Kvasir_test.png
+│   ├── train/
+│   │   └── img_Kvasir_train.png
+│   └── validation/
+│       └── img_Kvasir_validation.png
+└── Piccolo/
+    ├── test/
+    │   └── img_Piccolo_test.png
+    ├── train/
+    │   └── img_Piccolo_train.png
+    └── validation/
+        └── img_Piccolo_validation.png
+```
+</details>
+
+### TODO
+- [ ] Update PolypDataset class to handle more complex hierarchy
+- [ ] Integrate PyTorch Lightning:
+  - [ ] Create Lightning data module
+  - [ ] Create Lightning model
+  - [ ] Config file
+  - [ ] Callbacks and autotune model
+  - [ ] Multi-GPU support
+
+
+
 ## Faster RCNN Polyp Detection Module
 
 ### Extracting FasterRCNN data directory from data.zip:
@@ -56,3 +108,8 @@ data/
 
 ## Scratch 
 - scraps [jarret] didn't want to delete yet. 
+
+# TODO
+- Ditch MaskRCNN and stick to FasterRCNN --> We don't gain much from masking
+- Datasets:
+  - 

@@ -1,0 +1,4 @@
+lr-SGD,lr-SGD-momentum,step,train_acc,train_precision,train_recall,train_f1,train_loss,loss_classifier,loss_box_reg,loss_objectness,loss_rpn_box_reg,epoch
+0.01,0.9,0,,,,,,,,,,
+,,0,0.75,0.75,0.75,0.75,0.6692559123039246,0.5407164096832275,0.01752031035721302,0.10319212079048157,0.007827075198292732,0
+0.01,0.9,1,,,,,,,,,,
