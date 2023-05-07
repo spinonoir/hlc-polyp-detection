@@ -90,22 +90,6 @@ class LightningFasterModule(L.LightningModule):
         # fasterrcnn takes both images and targets for training, returns
         loss_dict = self.detector(images, targets)
         losses = sum(loss for loss in loss_dict.values())
-
-        # Inferece
-        # pred_boxes = self.forward(images)
-        # stacked_metrics = torch.stack([self.evaluate_metrics(t["boxes"], o["boxes"]) for t, o in zip(targets, pred_boxes)])
-        # stacked_metrics = stacked_metrics.mean(dim=0)
-        # acc, prec, rec, f1 = stacked_metrics
-
-        # log_dict = {"train_acc": acc, "train_precision": prec, "train_recall": rec, "train_f1": f1}
-        # self.log_dict(log_dict, batch_size=self.config['batch_size'])
-
-
-        # self.log("train_acc", acc, batch_size=self.config['batch_size'])
-        # self.log("train_precision", prec, batch_size=self.config['batch_size'])
-        # self.log("train_recall", rec, batch_size=self.config['batch_size'])
-        # self.log("train_f1", f1, batch_size=self.config['batch_size'])
-
         
 
         self.log("train_loss", losses, batch_size=self.config['batch_size'])
@@ -173,6 +157,74 @@ class LightningFasterModule(L.LightningModule):
         return log_dict
 
 
+    def on_test_epoch_end(self):
+        precisions = torch.as_tensor(self.callback_metrics['test']['test_precision'], dtype=torch.float32)
+        recalls = torch.as_tensor(self.callback_metrics['test']['test_recall'], dtype=torch.float32)
+        f1s = torch.as_tensor(self.callback_metrics['test']['test_f1'], dtype=torch.float32)
+
+        max_precision = precisions.max()
+        max_recall = recalls.max()
+        max_f1 = f1s.max()
+
+        min_precision = precisions.min()
+        min_recall = recalls.min()
+        min_f1 = f1s.min()
+
+        avg_precision = precisions.mean()
+        avg_recall = recalls.mean()
+        avg_f1 = f1s.mean()
+            
+        
+        self.log_dict({
+            "test_max_precision": max_precision,
+            "test_max_recall": max_recall,
+            "test_max_f1": max_f1,
+            "test_min_precision": min_precision,
+            "test_min_recall": min_recall,
+            "test_min_f1": min_f1,
+            "test_avg_precision": avg_precision,
+            "test_avg_recall": avg_recall,
+            "test_avg_f1": avg_f1,
+        })
+
+        for key in self.callback_metrics['test'].keys():
+            self.callback_metrics['test'][key] = []
+
+    def on_validation_epoch_end(self):
+        precisions = torch.as_tensor(self.callback_metrics['val']['val_precision'], dtype=torch.float32)
+        recalls = torch.as_tensor(self.callback_metrics['val']['val_recall'], dtype=torch.float32)
+        f1s = torch.as_tensor(self.callback_metrics['val']['val_f1'], dtype=torch.float32)
+        
+        
+        max_precision = precisions.max()
+        max_recall = recalls.max()
+        max_f1 = f1s.max()
+
+        min_precision = precisions.min()
+        min_recall = recalls.min()
+        min_f1 = f1s.min()
+
+        avg_precision = precisions.mean()
+        avg_recall = recalls.mean()
+        avg_f1 = f1s.mean()
+
+        
+        self.log_dict({
+            "val_max_precision": max_precision,
+            "val_max_recall": max_recall,
+            "val_max_f1": max_f1,
+            "val_min_precision": min_precision,
+            "val_min_recall": min_recall,
+            "val_min_f1": min_f1,
+            "val_avg_precision": avg_precision,
+            "val_avg_recall": avg_recall,
+            "val_avg_f1": avg_f1,
+        })
+
+        for key in self.callback_metrics['val'].keys():
+            self.callback_metrics['val'][key] = []
+
+        
 
 
 
@@ -232,79 +284,3 @@ class LightningFasterModule(L.LightningModule):
 
 
         return torch.as_tensor([accuracy, precision, recall, f1], device=pred_boxes.device)
-    
-class MetricsCallback(L.Callback):
-    def on_test_batch_end(self, trainer, pl_module):
-        precisions = pl_module.callback_metrics['test']['test_precision']
-        recalls = pl_module.callback_metrics['test']['test_recall']
-        f1s = pl_module.callback_metrics['test']['test_f1']
-
-        max_precision = precisions.max()
-        max_recall = recalls.max()
-        max_f1 = f1s.max()
-
-        min_precision = precisions.min()
-        min_recall = recalls.min()
-        min_f1 = f1s.min()
-
-        avg_precision = torch.stack(precisions).mean()
-        avg_recall = torch.stack(recalls).mean()
-        avg_f1 = torch.stack(f1s).mean()
-
-        
-        self.log_dict({
-            "test_precisions": precisions,
-            "test_recalls": recalls,
-            "test_f1s": f1s,
-            "test_max_precision": max_precision,
-            "test_max_recall": max_recall,
-            "test_max_f1": max_f1,
-            "test_min_precision": min_precision,
-            "test_min_recall": min_recall,
-            "test_min_f1": min_f1,
-            "test_avg_precision": avg_precision,
-            "test_avg_recall": avg_recall,
-            "test_avg_f1": avg_f1,
-        })
-
-        for key in pl_module.callback_metrics['test'].keys():
-            pl_module.callback_metrics['test'][key] = []
-
-    def on_validation_batch_end(self, trainer, pl_module):
-        precisions = pl_module.callback_metrics['val']['val_precision']
-        recalls = pl_module.callback_metrics['val']['val_recall']
-        f1s = pl_module.callback_metrics['val']['val_f1']
-
-        max_precision = precisions.max()
-        max_recall = recalls.max()
-        max_f1 = f1s.max()
-
-        min_precision = precisions.min()
-        min_recall = recalls.min()
-        min_f1 = f1s.min()
-
-        avg_precision = torch.stack(precisions).mean()
-        avg_recall = torch.stack(recalls).mean()
-        avg_f1 = torch.stack(f1s).mean()
-
-        
-        self.log_dict({
-            "val_precisions": precisions,
-            "val_recalls": recalls,
-            "val_f1s": f1s,
-            "val_max_precision": max_precision,
-            "val_max_recall": max_recall,
-            "val_max_f1": max_f1,
-            "val_min_precision": min_precision,
-            "val_min_recall": min_recall,
-            "val_min_f1": min_f1,
-            "val_avg_precision": avg_precision,
-            "val_avg_recall": avg_recall,
-            "val_avg_f1": avg_f1,
-        })
-
-        for key in pl_module.callback_metrics['val'].keys():
-            pl_module.callback_metrics['val'][key] = []
-        
-
-
